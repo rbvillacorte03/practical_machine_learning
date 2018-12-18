@@ -1,0 +1,85 @@
+---
+title: "Practical Machine Learning Course Project"
+author: "Roselyn Villacorte"
+date: "December 17, 2018"
+output:
+  html_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+Using devices such as Jawbone Up, Nike FuelBanl, and Fitbit is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self mvement - a group of enthusiast who take measurements about themselves regularly to improve their health, to find patterns in their behaviour, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. This project goal is to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways.
+
+### The Data
+The training data for this project are available at the following website:
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here:
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+The following data were classified in 5 different ways in lifting a dumbell
+
+1. Class A - exactly according to the specification
+2. Class B - throwing the elbows to the front
+3. Class C - lifting the dumbell only half
+4. Class D - lowering the dumbell only halfway
+5. Class E - throwing the hips to the front
+```{r echo=FALSE}
+# Load the packages, set the seed to 3355 and read the data
+# Set the working directory of the data set
+library(lattice)
+library(ggplot2)
+library(caret)
+library(randomForest)
+library(rattle)
+library(rpart)
+library(rpart.plot)
+library(RColorBrewer)
+
+training_data<-read.csv("pml-training.csv", header = TRUE, na.strings = c("NA", "#DIV/0!", ""))
+testing_data<-read.csv("pml-testing.csv", header = TRUE, na.strings = c("NA", "#DIV/0!", ""))
+dim(training_data)
+dim(testing_data)
+
+# Cleaning Data
+# Clean data to delete irrelevant variables
+training_data<-training_data[, colSums(is.na(training_data))==0]
+testing_data<-testing_data[, colSums(is.na(testing_data)) ==0]
+
+training_data<-training_data[, -c(1:7)]
+testing_data<-testing_data[, -c(1:7)]
+dim(training_data)
+dim(testing_data)
+
+# Cross Validation
+# Divide the data into 2 with predition of 75% and 25%
+divide_data<-createDataPartition(y=training_data$classe, p=0.75, list = FALSE)
+sub_training_data<-training_data[divide_data, ]
+sub_testing_data<-training_data[-divide_data, ]
+
+# Cross validation was applied using randomForest and Decision Tree model. Select the best model based on accuracy
+randomforest_model<-randomForest(classe~., data = sub_training_data, method ="class")
+prediction_model<-predict(randomforest_model, sub_testing_data, type = "class")
+matrix_result<-confusionMatrix(prediction_model, sub_testing_data$classe)
+
+decision_tree_model<-rpart(classe~., data = sub_training_data, method = "class")
+prediction_tree_model<-predict(decision_tree_model, sub_testing_data, type = "class")
+matrix_tree_model<-confusionMatrix(prediction_tree_model, sub_testing_data$classe)
+
+result_comparison<-data.frame(matrix_tree_model$overall, matrix_result$overall)
+result_comparison
+
+# Prediction
+final_prediction<-predict(randomforest_model, testing_data, type = "class")
+final_prediction
+
+```
+
+```{r decision_tree_model, echo=TRUE}
+print(fancyRpartPlot(decision_tree_model))
+```
